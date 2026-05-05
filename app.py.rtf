@@ -1,0 +1,96 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2868
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww25400\viewh12980\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 import csv\
+from collections import defaultdict\
+\
+def process_maturity():\
+    # Dictionaries to hold our aggregated data\
+    elements = defaultdict(lambda: \{"Dimension": "", "AES": 0, "Statement_Count": 0\})\
+    dimensions = defaultdict(lambda: \{"AES": 0, "PES": 0\})\
+\
+    print("Loading data from 'demo_data.csv'...")\
+    \
+    # 1. Read the CSV File\
+    try:\
+        with open('demo_data.csv', mode='r') as file:\
+            reader = csv.DictReader(file)\
+            for row in reader:\
+                dim = row['Dimension']\
+                scor_id = row['SCOR_ID']\
+                score = int(row['Score'])\
+\
+                # Add up scores (AES) and count statements per element\
+                elements[scor_id]["Dimension"] = dim\
+                elements[scor_id]["AES"] += score\
+                elements[scor_id]["Statement_Count"] += 1\
+    except FileNotFoundError:\
+        print("\uc0\u10060  Error: 'demo_data.csv' not found. Please make sure it is uploaded or in the same folder.")\
+        return\
+\
+    # 2. Calculate PES and RES for each element\
+    bottlenecks = []\
+    for scor_id, data in elements.items():\
+        pes = data["Statement_Count"] * 3\
+        aes = data["AES"]\
+        res = (aes / pes) * 100 if pes > 0 else 0\
+\
+        # Add to dimension totals\
+        dim = data["Dimension"]\
+        dimensions[dim]["AES"] += aes\
+        dimensions[dim]["PES"] += pes\
+\
+        # Store for bottleneck analysis\
+        bottlenecks.append(\{"SCOR_ID": scor_id, "Dimension": dim, "RES": res\})\
+\
+    # 3. Calculate TRPS (Total Relative Process Score)\
+    total_aes = sum(d["AES"] for d in dimensions.values())\
+    total_pes = sum(d["PES"] for d in dimensions.values())\
+    trps = (total_aes / total_pes) * 100 if total_pes > 0 else 0\
+\
+    # 4. Map TRPS to Maturity Stage (1-5)\
+    if trps <= 20: stage = 1\
+    elif trps <= 40: stage = 2\
+    elif trps <= 60: stage = 3\
+    elif trps <= 80: stage = 4\
+    else: stage = 5\
+\
+    # ==========================================\
+    # PRINTING THE FINAL REPORT TO THE CONSOLE\
+    # ==========================================\
+    print("\\n" + "="*55)\
+    print(" \uc0\u55356 \u57325  DPMM 4.0 MATURITY ASSESSMENT REPORT")\
+    print("="*55)\
+    \
+    print(f"\\n\uc0\u55356 \u57286  OVERALL READINESS:")\
+    print(f"Total Relative Process Score (TRPS): \{trps:.2f\}%")\
+    print(f"Current Maturity Stage: Stage \{stage\} / 5")\
+    \
+    print("\\n" + "-" * 55)\
+    print("\uc0\u55357 \u56522  DIMENSION BREAKDOWN (RDS):")\
+    print("-" * 55)\
+    for dim, data in dimensions.items():\
+        rds = (data["AES"] / data["PES"]) * 100 if data["PES"] > 0 else 0\
+        print(f" > \{dim\}: \{rds:.2f\}%")\
+\
+    print("\\n" + "-" * 55)\
+    print("\uc0\u9888 \u65039  OPERATIONAL BOTTLENECKS (Lowest RES Elements):")\
+    print(" These areas require immediate tech investment.")\
+    print("-" * 55)\
+    \
+    # Sort bottlenecks from lowest score to highest\
+    bottlenecks.sort(key=lambda x: x["RES"])\
+    \
+    # Print the 5 worst bottlenecks\
+    for b in bottlenecks[:5]:\
+        print(f" > SCOR Element \{b['SCOR_ID']\} (\{b['Dimension']\}): \{b['RES']:.2f\}%")\
+        \
+    print("\\n" + "="*55 + "\\n")\
+\
+# Run the program\
+if __name__ == "__main__":\
+    process_maturity()}

@@ -1,0 +1,52 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2868
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 import pandas as pd\
+\
+def process_maturity_scores(df):\
+    """\
+    Processes raw 0-3 survey data through the DPMM 4.0 formulas.\
+    """\
+    # 1. Calculate PES and AES per SCOR Element\
+    element_agg = df.groupby(['Dimension', 'SCOR_ID']).agg(\
+        AES=('Score', 'sum'),\
+        Statement_Count=('Score', 'count')\
+    ).reset_index()\
+    \
+    # Potential Element Score = Number of statements * max score of 3\
+    element_agg['PES'] = element_agg['Statement_Count'] * 3\
+    \
+    # 2. Relative Element Score (RES)\
+    element_agg['RES_%'] = (element_agg['AES'] / element_agg['PES']) * 100\
+\
+    # 3. Calculate RDS per Dimension\
+    dimension_agg = element_agg.groupby('Dimension').agg(\
+        Dim_AES=('AES', 'sum'),\
+        Dim_PES=('PES', 'sum')\
+    ).reset_index()\
+    \
+    # Relative Dimension Score (RDS)\
+    dimension_agg['RDS_%'] = (dimension_agg['Dim_AES'] / dimension_agg['Dim_PES']) * 100\
+\
+    # 4. Total Relative Process Score (TRPS)\
+    total_aes = dimension_agg['Dim_AES'].sum()\
+    total_pes = dimension_agg['Dim_PES'].sum()\
+    trps = (total_aes / total_pes) * 100\
+\
+    # 5. Map TRPS to Maturity Stage (1-5)\
+    if trps <= 20:\
+        stage = 1\
+    elif trps <= 40:\
+        stage = 2\
+    elif trps <= 60:\
+        stage = 3\
+    elif trps <= 80:\
+        stage = 4\
+    else:\
+        stage = 5\
+\
+    return element_agg, dimension_agg, trps, stage}
